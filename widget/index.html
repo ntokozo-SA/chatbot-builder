@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Widget Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .demo-section h2 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        .demo-section p {
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .highlight {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Chatbot Widget Demo</h1>
+        
+        <div class="demo-section">
+            <h2>Welcome to the AI Chatbot Widget Demo!</h2>
+            <p>This page demonstrates the embeddable AI chatbot widget. You can see the chat button in the bottom-right corner of this page.</p>
+            <p>Click on it to start a conversation with the AI assistant!</p>
+        </div>
+
+        <div class="demo-section">
+            <h2>How to Embed the Widget</h2>
+            <p>To add this widget to your website, simply include this script tag:</p>
+            <div class="code-block">
+&lt;script src="http://localhost:8000/widget.js" data-website-id="YOUR_WEBSITE_ID"&gt;&lt;/script&gt;
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>Features</h2>
+            <ul>
+                <li>✨ Real-time AI-powered conversations</li>
+                <li>🔍 Context-aware responses based on your website content</li>
+                <li>📱 Responsive design that works on all devices</li>
+                <li>🎨 Customizable appearance and positioning</li>
+                <li>📊 Conversation history and analytics</li>
+                <li>🔗 Source attribution for responses</li>
+            </ul>
+        </div>
+
+        <div class="highlight">
+            <strong>Note:</strong> This is a demo widget. In a real implementation, you would need to:
+            <ol>
+                <li>Set up the backend API with your website content</li>
+                <li>Configure your website ID</li>
+                <li>Deploy the widget to a CDN</li>
+                <li>Customize the appearance to match your brand</li>
+            </ol>
+        </div>
+
+        <div class="demo-section">
+            <h2>Sample Content</h2>
+            <p>This is some sample content that the AI chatbot could potentially reference when answering questions about this website.</p>
+            <p>The widget is designed to understand and respond to questions about the content on your website, providing helpful and accurate information to your visitors.</p>
+        </div>
+    </div>
+
+    <!-- Widget Script -->
+    <script src="http://localhost:5174/src/widget.js" data-website-id="demo-website-123"></script>
+</body>
+</html> 
