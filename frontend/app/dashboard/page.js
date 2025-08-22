@@ -22,7 +22,7 @@ import {
 import toast from 'react-hot-toast'
 import AddWebsiteModal from '../../components/AddWebsiteModal'
 import WebsiteCard from '../../components/WebsiteCard'
-import apiClient from '../../lib/api'
+import apiClient from '@/lib/api'
 
 export default function DashboardPage() {
   const router = useRouter()

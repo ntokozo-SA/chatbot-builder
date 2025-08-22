@@ -31,8 +31,12 @@ class WebsiteScraper:
             # If static scraping didn't get enough content, try dynamic scraping
             if len(pages) < 5:
                 logger.info(f"Static scraping got {len(pages)} pages, trying dynamic scraping")
-                dynamic_pages = await self._scrape_dynamic(base_url, base_domain)
-                pages.extend(dynamic_pages)
+                try:
+                    dynamic_pages = await self._scrape_dynamic(base_url, base_domain)
+                    pages.extend(dynamic_pages)
+                except Exception as e:
+                    logger.warning(f"Dynamic scraping failed, continuing with static content: {e}")
+                    logger.info("This is normal if Playwright browsers are not installed")
             
             # Remove duplicates and limit pages
             unique_pages = self._deduplicate_pages(pages)

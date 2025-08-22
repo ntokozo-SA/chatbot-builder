@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Bot, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
-import apiClient from '../../lib/api'
+import apiClient from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()

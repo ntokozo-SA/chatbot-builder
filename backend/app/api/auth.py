@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer
 from app.core.database import get_supabase, get_supabase_admin
 from app.core.auth import verify_password, get_password_hash, create_access_token, get_current_active_user
 from app.models.user import UserCreate, User, UserLogin, Token, UserUpdate
+from app.core.config import settings
 from datetime import datetime
 import uuid
 import logging
@@ -12,6 +13,66 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 security = HTTPBearer()
+
+@router.post("/debug")
+async def debug_request(request: Request):
+    """Debug endpoint to see what data is being sent"""
+    try:
+        body = await request.body()
+        logger.info(f"Raw request body: {body}")
+        
+        # Try to parse as JSON
+        try:
+            import json
+            json_data = json.loads(body)
+            logger.info(f"Parsed JSON data: {json_data}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON: {e}")
+        
+        return {"message": "Request logged", "body": body.decode() if body else "No body"}
+    except Exception as e:
+        logger.error(f"Debug endpoint error: {e}")
+        return {"error": str(e)}
+
+@router.get("/test")
+async def test_auth_config():
+    """Test endpoint to check configuration and database connection"""
+    try:
+        logger.info("Testing auth configuration...")
+        
+        # Check if we have valid Supabase configuration
+        config_info = {
+            "supabase_url": settings.SUPABASE_URL,
+            "has_anon_key": bool(settings.SUPABASE_ANON_KEY and settings.SUPABASE_ANON_KEY != "your-anon-key-here"),
+            "has_service_key": bool(settings.SUPABASE_SERVICE_ROLE_KEY and settings.SUPABASE_SERVICE_ROLE_KEY != "your-service-role-key-here"),
+            "has_secret_key": bool(settings.SECRET_KEY and settings.SECRET_KEY != "your-secret-key-here"),
+        }
+        
+        logger.info(f"Configuration check: {config_info}")
+        
+        # Try to connect to database
+        try:
+            supabase = await get_supabase()
+            # Test a simple query
+            result = supabase.table("users").select("id").limit(1).execute()
+            db_status = "connected"
+        except Exception as db_error:
+            logger.error(f"Database connection failed: {db_error}")
+            db_status = f"failed: {str(db_error)}"
+        
+        return {
+            "status": "ok",
+            "config": config_info,
+            "database": db_status,
+            "message": "Auth configuration test completed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Test endpoint failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Test failed: {str(e)}"
+        )
 
 @router.post("/register", response_model=Token)
 async def register(user_data: UserCreate):
@@ -28,6 +89,7 @@ async def register(user_data: UserCreate):
         HTTPException: 400 if email already exists, 500 for server errors
     """
     logger.info(f"Registration attempt for email: {user_data.email}")
+    logger.info(f"Registration data received: email={user_data.email}, full_name={user_data.full_name}, password_length={len(user_data.password) if user_data.password else 0}")
     
     try:
         # Get Supabase client
@@ -97,14 +159,28 @@ async def register(user_data: UserCreate):
     except HTTPException:
         # Re-raise HTTP exceptions as they already have proper status codes
         raise
+    except ValueError as e:
+        # Handle validation errors
+        logger.error(f"Validation error for {user_data.email}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation error: {str(e)}"
+        )
     except Exception as e:
         # Log the full error for debugging
         logger.error(f"Registration failed for {user_data.email}: {str(e)}", exc_info=True)
         
-        # Return a generic error message to the client
+        # Check for specific error types
+        error_message = "Registration failed. Please try again later."
+        if "connection" in str(e).lower():
+            error_message = "Database connection failed. Please check your configuration."
+        elif "supabase" in str(e).lower():
+            error_message = "Database service error. Please check your Supabase configuration."
+        
+        # Return a more specific error message to the client
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Registration failed. Please try again later."
+            detail=error_message
         )
 
 @router.post("/login", response_model=Token)
@@ -176,10 +252,17 @@ async def login(user_credentials: UserLogin):
         # Log the full error for debugging
         logger.error(f"Login failed for {user_credentials.email}: {str(e)}", exc_info=True)
         
-        # Return a generic error message to the client
+        # Check for specific error types
+        error_message = "Login failed. Please try again later."
+        if "connection" in str(e).lower():
+            error_message = "Database connection failed. Please check your configuration."
+        elif "supabase" in str(e).lower():
+            error_message = "Database service error. Please check your Supabase configuration."
+        
+        # Return a more specific error message to the client
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Login failed. Please try again later."
+            detail=error_message
         )
 
 @router.get("/me", response_model=User)

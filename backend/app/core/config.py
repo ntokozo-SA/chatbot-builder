@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     
     # HuggingFace Configuration
     HUGGINGFACE_API_KEY: str
-    HUGGINGFACE_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
-    HUGGINGFACE_CHAT_MODEL: str = "google/flan-t5-base"
+    HUGGINGFACE_EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-MiniLM-L3-v2"
+    HUGGINGFACE_CHAT_MODEL: str = "microsoft/DialoGPT-medium"
     
     # Qdrant Configuration
     QDRANT_URL: str

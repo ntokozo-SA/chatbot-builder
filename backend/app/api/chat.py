@@ -10,6 +10,9 @@ from datetime import datetime
 import uuid
 import httpx
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,6 +23,104 @@ async def chat(
     current_user: Optional[User] = Depends(get_current_active_user)
 ):
     """Handle chat messages and generate AI responses"""
+    supabase = await get_supabase()
+    
+    try:
+        # Get client IP and user agent
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        
+        # Get or create conversation
+        conversation_id = chat_request.conversation_id
+        if not conversation_id:
+            conversation_id = str(uuid.uuid4())
+            
+            # Create new conversation
+            conversation_data = {
+                "id": conversation_id,
+                "website_id": chat_request.website_id,
+                "user_session_id": f"test_session_{conversation_id}",
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            supabase.table("conversations").insert(conversation_data).execute()
+        
+        # Verify website exists and is completed
+        website_response = supabase.table("websites").select("status").eq("id", chat_request.website_id).single().execute()
+        if not website_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Website not found"
+            )
+        
+        if website_response.data["status"] != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Website is not ready for chat. Please wait for processing to complete."
+            )
+        
+        # Search for relevant content
+        similar_chunks = await search_similar_chunks(
+            chat_request.website_id, 
+            chat_request.message, 
+            top_k=3
+        )
+        
+        # Generate AI response
+        context = "\n\n".join([chunk['content'] for chunk in similar_chunks])
+        ai_response = await generate_ai_response(chat_request.message, context)
+        
+        # Store user message
+        user_message_data = {
+            "id": str(uuid.uuid4()),
+            "conversation_id": conversation_id,
+            "role": MessageRole.USER.value,
+            "content": chat_request.message,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        supabase.table("messages").insert(user_message_data).execute()
+        
+        # Store AI response
+        ai_message_data = {
+            "id": str(uuid.uuid4()),
+            "conversation_id": conversation_id,
+            "role": MessageRole.ASSISTANT.value,
+            "content": ai_response,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        supabase.table("messages").insert(ai_message_data).execute()
+        
+        # Update conversation
+        supabase.table("conversations").update({
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", conversation_id).execute()
+        
+        # Prepare sources
+        sources = []
+        for chunk in similar_chunks:
+            if chunk['url'] not in sources:
+                sources.append(chunk['url'])
+        
+        return ChatResponse(
+            message=ai_response,
+            conversation_id=conversation_id,
+            sources=sources[:3],  # Limit to 3 sources
+            confidence=similar_chunks[0]['score'] if similar_chunks else 0.0
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Chat failed: {str(e)}"
+        )
+
+@router.post("/test", response_model=ChatResponse)
+async def test_chat(
+    chat_request: ChatRequest,
+    request: Request
+):
+    """Test endpoint for chatbot - bypasses authentication"""
     supabase = await get_supabase()
     
     try:

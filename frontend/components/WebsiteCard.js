@@ -12,14 +12,17 @@ import {
   Clock,
   MessageSquare,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Bot
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import apiClient from '../lib/api'
+import apiClient from '@/lib/api'
+import ChatbotDemo from './ChatbotDemo'
 
 export default function WebsiteCard({ website, onDelete, onUpdate, index }) {
   const [isLoading, setIsLoading] = useState(false)
   const [showWidgetCode, setShowWidgetCode] = useState(false)
+  const [showChatbotDemo, setShowChatbotDemo] = useState(false)
 
   const getStatusIcon = () => {
     switch (website.status) {
@@ -171,6 +174,14 @@ export default function WebsiteCard({ website, onDelete, onUpdate, index }) {
           {website.status === 'completed' && (
             <>
               <button
+                onClick={() => setShowChatbotDemo(true)}
+                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <Bot className="w-4 h-4" />
+                <span>View Chatbot</span>
+              </button>
+              
+              <button
                 onClick={() => setShowWidgetCode(!showWidgetCode)}
                 className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
               >
@@ -217,6 +228,13 @@ export default function WebsiteCard({ website, onDelete, onUpdate, index }) {
           </div>
         </div>
       </div>
+      
+      {/* Chatbot Demo Modal */}
+      <ChatbotDemo
+        website={website}
+        isOpen={showChatbotDemo}
+        onClose={() => setShowChatbotDemo(false)}
+      />
     </motion.div>
   )
 } 

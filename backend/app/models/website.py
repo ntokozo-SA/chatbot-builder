@@ -16,7 +16,7 @@ class WebsiteBase(BaseModel):
     description: Optional[str] = None
 
 class WebsiteCreate(WebsiteBase):
-    user_id: str
+    pass
 
 class WebsiteUpdate(BaseModel):
     name: Optional[str] = None

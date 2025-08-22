@@ -37,11 +37,8 @@ class UserCreate(UserBase):
     
     @validator('email')
     def validate_email(cls, v):
-        """Validate and normalize email"""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError('Invalid email format')
-        return v.lower().strip()
+        """Normalize email to lowercase"""
+        return v.lower().strip() if v else v
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, description="User's email address")
@@ -87,11 +84,8 @@ class UserLogin(BaseModel):
     
     @validator('email')
     def validate_email(cls, v):
-        """Validate and normalize email"""
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
-            raise ValueError('Invalid email format')
-        return v.lower().strip()
+        """Normalize email to lowercase"""
+        return v.lower().strip() if v else v
     
     @validator('password')
     def validate_password(cls, v):

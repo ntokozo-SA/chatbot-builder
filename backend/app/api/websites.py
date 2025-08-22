@@ -17,11 +17,55 @@ async def create_website(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new website for the current user"""
-    supabase = await get_supabase()
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Creating website for user {current_user.id}: {website_data.url}")
     
     try:
+        # Validate required fields
+        if not website_data.url:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Website URL is required"
+            )
+        
+        # Validate URL format
+        try:
+            url_str = str(website_data.url)
+            if not url_str.startswith(('http://', 'https://')):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="URL must start with http:// or https://"
+                )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid URL format"
+            )
+        
+        # Sanitize inputs
+        website_name = website_data.name.strip() if website_data.name else None
+        website_description = website_data.description.strip() if website_data.description else None
+        
+        # Validate name length
+        if website_name and len(website_name) > 200:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Website name must be less than 200 characters"
+            )
+        
+        # Validate description length
+        if website_description and len(website_description) > 1000:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Description must be less than 1000 characters"
+            )
+        
+        supabase = await get_supabase()
+        
         # Check if user already has this website
-        existing_website = supabase.table("websites").select("id").eq("user_id", current_user.id).eq("url", str(website_data.url)).execute()
+        existing_website = supabase.table("websites").select("id").eq("user_id", current_user.id).eq("url", url_str).execute()
         if existing_website.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -35,28 +79,42 @@ async def create_website(
         website_record = {
             "id": website_id,
             "user_id": current_user.id,
-            "url": str(website_data.url),
-            "name": website_data.name or f"Website {len(existing_website.data) + 1}",
-            "description": website_data.description,
+            "url": url_str,
+            "name": website_name or f"Website {len(existing_website.data) + 1}",
+            "description": website_description,
             "status": WebsiteStatus.PENDING.value,
             "created_at": now.isoformat(),
             "updated_at": now.isoformat()
         }
         
+        logger.info(f"Inserting website record: {website_record}")
+        
         response = supabase.table("websites").insert(website_record).execute()
         
         if not response.data:
+            logger.error("Failed to insert website into database")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create website"
             )
         
+        logger.info(f"Website created successfully: {website_id}")
         return Website(**response.data[0])
         
+    except HTTPException:
+        # Re-raise HTTP exceptions as they already have proper status codes
+        raise
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Validation error: {str(e)}"
+        )
     except Exception as e:
+        logger.error(f"Failed to create website: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create website: {str(e)}"
+            detail="Failed to create website. Please try again later."
         )
 
 @router.get("/", response_model=List[Website])
@@ -193,7 +251,7 @@ async def start_website_scraping(
         }).eq("id", website_id).execute()
         
         # Start background scraping task
-        background_tasks.add_task(scrape_and_process_website, website_id, website.url)
+        background_tasks.add_task(scrape_and_process_website, website_id, str(website.url))
         
         return {"message": "Website scraping started", "website_id": website_id}
     except Exception as e:

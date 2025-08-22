@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Globe, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
-import apiClient from '../lib/api'
+import apiClient from '@/lib/api'
 
 export default function AddWebsiteModal({ onClose, onWebsiteAdded }) {
   const [formData, setFormData] = useState({
@@ -13,27 +13,103 @@ export default function AddWebsiteModal({ onClose, onWebsiteAdded }) {
     description: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState({})
+
+  // Validation function
+  const validateWebsite = (website) => {
+    const errors = []
+    
+    // Check required fields
+    if (!website.url || !website.url.trim()) {
+      errors.push('Website URL is required')
+    }
+    
+    // Validate URL format
+    if (website.url && !website.url.match(/^https?:\/\/.+/)) {
+      errors.push('URL must start with http:// or https://')
+    }
+    
+    // Validate name length
+    if (website.name && website.name.length > 200) {
+      errors.push('Website name must be less than 200 characters')
+    }
+    
+    // Validate description length
+    if (website.description && website.description.length > 1000) {
+      errors.push('Description must be less than 1000 characters')
+    }
+    
+    return errors
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Clear previous errors
+    setErrors({})
+    
+    // Validate form data
+    const validationErrors = validateWebsite(formData)
+    if (validationErrors.length > 0) {
+      // Set field-specific errors
+      const fieldErrors = {}
+      validationErrors.forEach(error => {
+        if (error.includes('URL')) {
+          fieldErrors.url = error
+        } else if (error.includes('name')) {
+          fieldErrors.name = error
+        } else if (error.includes('Description')) {
+          fieldErrors.description = error
+        } else {
+          toast.error(error)
+        }
+      })
+      
+      setErrors(fieldErrors)
+      return
+    }
+    
     setIsLoading(true)
 
     try {
-      const data = await apiClient.createWebsite(formData)
+      // Sanitize the data
+      const sanitizedData = {
+        url: formData.url.trim(),
+        name: formData.name.trim() || null,
+        description: formData.description.trim() || null
+      }
+      
+      const data = await apiClient.createWebsite(sanitizedData)
       toast.success('Website added successfully!')
       onWebsiteAdded(data)
     } catch (error) {
-      toast.error(error.message || 'Failed to add website')
+      // Handle specific error types
+      if (error.detail) {
+        toast.error(error.detail)
+      } else if (error.message) {
+        toast.error(error.message)
+      } else {
+        toast.error('Failed to add website')
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     })
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: null
+      })
+    }
   }
 
   return (
@@ -75,10 +151,15 @@ export default function AddWebsiteModal({ onClose, onWebsiteAdded }) {
                   value={formData.url}
                   onChange={handleChange}
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.url ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="https://example.com"
                 />
               </div>
+              {errors.url && (
+                <p className="mt-1 text-sm text-red-600">{errors.url}</p>
+              )}
               <p className="mt-1 text-sm text-gray-500">
                 Enter the full URL of your website (including https://)
               </p>
@@ -95,9 +176,14 @@ export default function AddWebsiteModal({ onClose, onWebsiteAdded }) {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`block w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                }`}
                 placeholder="My Awesome Website"
               />
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+              )}
               <p className="mt-1 text-sm text-gray-500">
                 Optional: Give your website a friendly name
               </p>
@@ -118,10 +204,15 @@ export default function AddWebsiteModal({ onClose, onWebsiteAdded }) {
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.description ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Brief description of your website..."
                 />
               </div>
+              {errors.description && (
+                <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+              )}
               <p className="mt-1 text-sm text-gray-500">
                 Optional: Describe what your website is about
               </p>
